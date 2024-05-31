@@ -1,0 +1,5 @@
+
+*.pyc
+*.json
+*.webp
+_Taverna Bot 2.0/res/.env
