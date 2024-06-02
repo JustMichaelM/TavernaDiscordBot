@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
-import config
-from config import TEST_SERVER
+from utils.config import TEST_SERVER, get_application_id, get_token
 from cogs.reservation import ReservationTableView
 
 class TavernaBot(commands.Bot):
@@ -9,13 +8,11 @@ class TavernaBot(commands.Bot):
         super().__init__(
             command_prefix=commands.when_mentioned_or("tav "), 
             intents=discord.Intents.all(),
-            application_id = config.get_application_id())
-        
+            application_id = get_application_id())
         
         self.ext = [    
             "cogs.meme",
             "cogs.reservation",
-            "cogs.test",
             "cogs.wh40k"
             ]
     
@@ -24,7 +21,6 @@ class TavernaBot(commands.Bot):
             await self.load_extension(ext)
             print(f"Loaded {ext}")
         
-
         self.add_view(ReservationTableView(self))
 
         self.tree.copy_global_to(guild=TEST_SERVER)
@@ -39,4 +35,4 @@ class TavernaBot(commands.Bot):
 
 
 bot = TavernaBot()
-bot.run(config.get_token())
+bot.run(get_token())

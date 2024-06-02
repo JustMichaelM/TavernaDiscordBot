@@ -17,6 +17,9 @@ def get_taverna_server_id() -> int:
 def get_application_id() -> int:
     return int(os.getenv("APPLICATION_ID"))
 
+def get_channel_id(channel: str) -> int:
+    return int(os.getenv(channel))
+
 class Server(discord.abc.Snowflake):
     def __init__(self, server_id: int, name: str):
         self.name = name
@@ -24,4 +27,3 @@ class Server(discord.abc.Snowflake):
 
 TEST_SERVER = Server(get_test_server_id(), "Serwer Testowy")
 TAVERNA_SERVER = Server(get_taverna_server_id(), "Serwer Tawerna")
-

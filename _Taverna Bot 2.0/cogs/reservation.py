@@ -1,10 +1,14 @@
 import discord
 from discord.ext import commands, tasks
-from config import TEST_SERVER
+from utils.config import TEST_SERVER, get_test_server_id,get_channel_id
 import asyncio
 import utils.table as table
 from discord.ui import Select, View
-from datetime import datetime, timedelta
+import datetime
+import pytz
+
+dt_utcnow = datetime.datetime.now(tz=pytz.utc)
+dt_pl = dt_utcnow.astimezone(pytz.timezone("Europe/Warsaw"))
 
 
 class SelectGameView(View):
@@ -116,42 +120,46 @@ class ReservationTableView(View):
             await interaction.user.send("Nie rezerwowałeś żadnego stołu.")
     
 
-
-    
     @discord.ui.button(label="Pokaż zarezerwowane stoły", style=discord.ButtonStyle.green, custom_id="3")
     async def show_all_tables(self, interaction: discord.Interaction, button: discord.ui.Button):
-        data = table.load_json()
-        embed = discord.Embed(title="Status stołów", color=discord.Color.blue())
+        guild = interaction.guild
         await interaction.response.defer()
-
-        def get_next_saturday():
-
-            today = datetime.datetime.now()
-            next_saturday = today + datetime.timedelta((5 - today.weekday() + 7) % 7)
-            today = datetime.now()
-            next_saturday = today + timedelta((5 - today.weekday() + 7) % 7)
-
-            return next_saturday
-
-        
-        next_saturday = get_next_saturday()
-        embed.add_field(name="Najbliższa sobota", value=next_saturday.strftime('%d.%m.%Y'), inline=False)
-
-        for key, value in data.items():
-            if not value['Osoba 1']: 
-                #await interaction.user.send(f"Stół {key} jest pusty i możliwy do zarezerwowania.\n")
-                embed.add_field(name=f"Stół {key}", value="Stół jest pusty i możliwy do zarezerwowania.", inline=False)
-            else:
-                osoba1 = interaction.guild.get_member(int(value['Osoba 1']))
-                osoba2 = interaction.guild.get_member(int(value['Osoba 2'])) if value['Osoba 2'] else ""
-                game = value['Gra']
-                embed.add_field(name=f"Stół {key}",
-                                value=f"Zarezerwowany przez: {osoba1.display_name}\n \
-                                Osoba 2: {osoba2.display_name if osoba2 != "" else ""}\n \
-                                Gra: {game}",
-                                inline=False)
-    
+        embed = embed_tables_info(guild)
         await interaction.user.send(embed=embed)
+
+
+def get_next_saturday() -> datetime:
+    
+    today = datetime.datetime.now(tz=dt_pl.tzinfo)
+
+    if today.isoweekday() == 7:
+        next_saturday = today + datetime.timedelta(int(today.isoweekday())-1)
+    else:
+        next_saturday = today + datetime.timedelta(int(6-today.isoweekday()))
+
+    return next_saturday
+
+def embed_tables_info(guild):
+    data = table.load_json()
+    embed = discord.Embed(title="Status stołów", color=discord.Color.blue())
+    
+    next_saturday = get_next_saturday()
+    embed.add_field(name="Najbliższa sobota", value=next_saturday.strftime('%d.%m.%Y'), inline=False)
+
+    for key, value in data.items():
+        if not value['Osoba 1']: 
+            #await interaction.user.send(f"Stół {key} jest pusty i możliwy do zarezerwowania.\n")
+            embed.add_field(name=f"Stół {key}", value="Stół jest pusty i możliwy do zarezerwowania.", inline=False)
+        else:
+            osoba1 = guild.get_member(int(value['Osoba 1']))
+            osoba2 = guild.get_member(int(value['Osoba 2'])) if value['Osoba 2'] else ""
+            game = value['Gra']
+            embed.add_field(name=f"Stół {key}",
+                            value=f"Zarezerwowany przez: {osoba1.display_name}\n \
+                            Osoba 2: {osoba2.display_name if osoba2 != "" else ""}\n \
+                            Gra: {game}",
+                            inline=False)
+    return embed
 
 class TableReservationCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -159,52 +167,28 @@ class TableReservationCog(commands.Cog):
         self.task_clear_tables.start()
         self.task_table_reminder.start()
         
-    @tasks.loop(hours=24)
+    @tasks.loop(time=datetime.time(hour=23, tzinfo=dt_pl.tzinfo)) #loop uruchamiany codziennie o 23
     async def task_clear_tables(self):
-        # Pobierz aktualną datę i godzinę
-        now = datetime.now()
-
-        # Sprawdź, czy dzisiaj jest sobota
-        if now.isoweekday() == 7:
-            table.clear_all_tables()
-            #print("To jest sobota!")
+        day = datetime.datetime.now(tz=dt_pl.tzinfo)
+        if day.isoweekday() == 7:
+            table.clear_all_tables() #w niedziele o 23 czyścimy stoły.
     
     @task_clear_tables.before_loop
-    async def task_clear_table_before_loop(self):
-        # Poczekaj aż zegar pokaże północ
+    async def task_clear_tables_before_loop(self):
         await self.bot.wait_until_ready()
-        # Oblicz ile czasu pozostało do północy
-        now = datetime.now()
-        midnight = datetime.combine(now.date() + timedelta(days=1), datetime.min.time())
-        time_until_midnight = (midnight - now).total_seconds()
 
-        # Poczekaj do północy
-        await asyncio.sleep(time_until_midnight)
-    
-    @tasks.loop(hours=24)  # Loop uruchamiany co 24 godziny
+    @tasks.loop(time=datetime.time(hour=12, tzinfo=dt_pl.tzinfo))  # Loop uruchamiany codziennie o 12
     async def task_table_reminder(self):
-        now = datetime.datetime.now()
-        if now.weekday() in [0, 2, 4]:  # Poniedziałek (0), Środa (2) i Piątek (4)
-            channel = self.bot.get_channel(1202670820791427132) # TO PÓŹNIEJ ZMIENIĆ NA WŁAŚCIWY
-            await channel.send("Wiadomość wysłana w poniedziałek, środę i piątek.")
+        guild = self.bot.get_guild(get_test_server_id())
+        day = datetime.datetime.now(tz=dt_pl.tzinfo)
+        if day.isoweekday() in [1, 3, 5]:  # Poniedziałek (1), Środa (3) i Piątek (5)
+            channel = await guild.fetch_channel(get_channel_id("TEST_CHANNEL_ID")) #TO ZAMIENIĆ NA ODPOWIEDNI CHANNEL ID
+            embed = embed_tables_info(guild)
+            await channel.send(embed=embed)
     
     @task_table_reminder.before_loop
     async def task_table_reminder_before_loop(self):
-        now = datetime.datetime.now()
-        # Ustawianie czasu startu taska na 12:00 (południe)
-        await self.wait_until_next_hour()
-
-        target_time = datetime.time(12, 0)
-        while now.time() < target_time:
-            await asyncio.sleep(3600)  # Czekaj co godzinę, aż osiągniesz godzinę 12:00
-            now = datetime.now()
-
-    async def wait_until_next_hour(self):
-        now = datetime.now()
-        if now.minute != 0 or now.second != 0:
-            # Jeśli nie jesteśmy na pełnej godzinie, poczekaj do następnej
-            next_hour = now.replace(second=0, microsecond=0, minute=0, hour=(now.hour + 1) % 24)
-            await asyncio.sleep((next_hour - now).total_seconds())
+        await self.bot.wait_until_ready()
 
     @commands.command()
     @commands.is_owner()
@@ -219,7 +203,6 @@ class TableReservationCog(commands.Cog):
     async def clear(self, ctx):
         await ctx.message.delete()
         table.clear_all_tables()
-        #await ctx.send("Wyczyściłem wszystkie stoły")
 
     @table.error
     async def error(self, ctx, error):
@@ -235,3 +218,15 @@ class TableReservationCog(commands.Cog):
 
 async def setup(bot:commands.Bot) -> None:
     await bot.add_cog(TableReservationCog(bot), guild=TEST_SERVER)
+
+'''
+await self.bot.wait_until_ready()
+
+#A dokładnie to te 2 linijki nie zadziałają. Bot najpierw ładuje (inicjalizuje) Cogi
+#a dopiero później odpala bota. Ergho próbujemy przypisać tutaj nieistniejące wartości
+#Dlatego zawsze potrzebna jest linijka wyżej w np. Before loopie...
+self.guild = self.bot.get_guild(get_test_server_id())
+channel = await self.guild.fetch_channel(int(1202670820791427132))
+
+await channel.send("W KOŃCU DZIAŁAAAAM!!!")
+'''

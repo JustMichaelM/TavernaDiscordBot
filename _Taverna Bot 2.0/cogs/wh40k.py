@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
-from config import TEST_SERVER
-from discord.ui import Select, View
+from utils.config import TEST_SERVER
+from discord.ui import View
 import utils.new_game as newGame
 
 class Deploy(View):
