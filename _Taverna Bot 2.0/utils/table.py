@@ -48,6 +48,46 @@ def book_table(bookingPersonID: str, bookedPersonID: str, game: str):
             save_json(data)
             return
 
+def book_table_myself(bookingPersonID: str,game: str):
+    #Funkcja wpisyjąca użytkownika i grę. Służy gdy ktoś chce rezerwować stół tylko dla siebie.
+    data = load_json()
+    for key,value in data.items():
+        if not value['Osoba 1']:
+            value['Osoba 1'] = bookingPersonID
+            value['Osoba 2'] = ""
+            value['Gra'] = game 
+
+            save_json(data)
+            return
+
+def show_booked() -> list:
+    data = load_json()
+    persons = []
+    games = []
+
+    for key,value in data.items():
+        if value['Osoba 1'] != "":
+            persons.append(value['Osoba 1'])
+            games.append(value['Gra'])
+    
+    return persons, games
+
+def join_table(bookingPersonID: str, bookedPersonID: str):
+    #Funkcja wpisyjąca dołączanie do innego użytkownika.
+    data = load_json()
+    for key,value in data.items():
+        if value['Osoba 1'] == bookedPersonID:
+            value['Osoba 2'] = bookingPersonID
+            save_json(data)    
+            return
+        
+def join_table_check() -> bool:
+    #Funkcja sprawdzająca czy wszystkie stoły są już zabookowane. Jeśli tak to discord wyśle stosowną wiadomość
+    #do użytkownika który chce zabookować stół.
+    data = load_json()
+    allJoined = all(value['Osoba 2'] for key, value in data.items())
+    return allJoined
+
 def cancel_table_check(personID: str):
     #Sprawdza czy ktoś rezerwował stół. Jeśli tak to jest w słowniku. Jesli nie to Discord wyśle wiadomość że
     #osoba nie rezerwowała żadnego stołu.
@@ -59,7 +99,9 @@ def cancel_table(personID: str):
     data = load_json()
     for key, value in data.items():
         if value['Osoba 1'].lower() == personID.lower():
-            value.update({'Osoba 1': '', 'Osoba 2': '', 'Gra': ''})
+            value['Osoba 1'] = value['Osoba 2']
+            value['Osoba 2'] = ""
+            #value.update({'Osoba 1': '', 'Osoba 2': '', 'Gra': ''})
             save_json(data)
         else:
             value['Osoba 2'] = ""
