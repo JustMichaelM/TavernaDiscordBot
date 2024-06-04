@@ -72,14 +72,13 @@ def show_booked() -> list:
     
     return persons, games
 
-def join_table(bookingPersonID: str, bookedPersonID: str):
+def join_table(bookingPersonID: str, bookedPersonID: str) -> None:
     #Funkcja wpisyjąca dołączanie do innego użytkownika.
     data = load_json()
     for key,value in data.items():
-        if value['Osoba 1'] == bookedPersonID:
+        if value['Osoba 1'] == bookedPersonID and value['Osoba 2'] == "":
             value['Osoba 2'] = bookingPersonID
             save_json(data)    
-            return
         
 def join_table_check() -> bool:
     #Funkcja sprawdzająca czy wszystkie stoły są już zabookowane. Jeśli tak to discord wyśle stosowną wiadomość
@@ -88,7 +87,13 @@ def join_table_check() -> bool:
     allJoined = all(value['Osoba 2'] for key, value in data.items())
     return allJoined
 
-def cancel_table_check(personID: str):
+def is_in_table(person: str) -> bool:
+    data = load_json()
+    for key,value in data.items():
+        if value['Osoba 1'] == person or value['Osoba 2'] == person:
+            return True
+
+def cancel_table_check(personID: str) -> bool:
     #Sprawdza czy ktoś rezerwował stół. Jeśli tak to jest w słowniku. Jesli nie to Discord wyśle wiadomość że
     #osoba nie rezerwowała żadnego stołu.
     data = load_json()
@@ -103,9 +108,11 @@ def cancel_table(personID: str):
             value['Osoba 2'] = ""
             #value.update({'Osoba 1': '', 'Osoba 2': '', 'Gra': ''})
             save_json(data)
-        else:
+        
+        if value['Osoba 2'].lower() == personID.lower():
             value['Osoba 2'] = ""
             save_json(data)
+
 
 #TO BĘDZIE TASKIEM W DISCORDZIE
 def clear_all_tables():
