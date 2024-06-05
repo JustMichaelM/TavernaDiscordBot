@@ -73,19 +73,19 @@ class TableReservationCog(commands.Cog):
 
     #@app_commands.context_menu(name ="Zarezerwój stół z użytkownikiem")
     async def book_table_callback(self, interaction: discord.Interaction, member: discord.Member):
-        clubMemberRoleID = 1243257402766397541
-        bookingPerson = interaction.user
-        bookingPersonID = str(interaction.user.id)
-        bookedPersonID = str(member.id)
+        booking_person = interaction.user
+        partner_person = member
 
-        if await tables_chcecks(bookingPerson,clubMemberRoleID,bookingPersonID,interaction) == False:
+        if await tables_chcecks(booking_person,interaction) == False:
+            await interaction.response.send_message("Coś poszło nie tak! Nie udało Ci się zarezerwować stołu\nNie przejmuj się, ta wiadomość zniknie po 5 sekundach", ephemeral=True)
+            for time in range(4, 0, -1):
+                await asyncio.sleep(1)
+                await interaction.edit_original_response(content = f"Coś poszło nie tak! Nie udało Ci się zarezerwować stołu\nNie przejmuj się, ta wiadomość zniknie po {time} sekundach")
+            await interaction.delete_original_response()
             return
         
-        if table.is_in_table(str(member.id)):
-            await interaction.user.send("Jesteś już na jakimś stole")
-            return 
 
-        table.book_table(bookingPersonID,bookedPersonID,game="")
+        table.book_table_with_someone(booking_person.id,partner_person.id,game="")
         await edit_msg(self.bot)
         
         await interaction.response.send_message("Udało Ci się zarezerwować stół!\nTą wiadomość widzisz tylko Ty.\nWiadomość zostanie usunięta za 5 sekund", ephemeral=True)
@@ -95,8 +95,6 @@ class TableReservationCog(commands.Cog):
             await interaction.edit_original_response(content = f"Udało Ci się zarezerwować stół!\nTą wiadomość widzisz tylko Ty.\nWiadomość zostanie usunięta za {time}")
         
         await interaction.delete_original_response()
-        
-
 
     @table.error
     async def error(self, ctx, error):
@@ -119,26 +117,34 @@ class TableReservationCog(commands.Cog):
 async def setup(bot:commands.Bot) -> None:
     await bot.add_cog(TableReservationCog(bot), guild=TEST_SERVER)
 
+
 class SelectJoinUserView(View):
     def __init__(self,interaction: discord.Interaction):
         super().__init__()
-        self.persons, self.games = table.show_booked()
-        self.membersList = []
-        self.bookedPersonID = ""
+        self.guild = interaction.guild
+        self.persons_in_tables: list[int] = []
+        self.games_in_tables: list[str] = []
+        self.members_to_select_list: list[int] = []
+        
+        self.persons_in_tables, self.games_in_tables = table.return_booked_tables()
+        
+        self.selected_member: discord.Member = None
 
 
-        for person in self.persons:
-            self.membersList.append(interaction.guild.get_member(int(person)))
+        for person in self.persons_in_tables:
+            self.members_to_select_list.append(interaction.guild.get_member(person))
 
         select = Select(
             placeholder="Pozycja",
-            options=[discord.SelectOption(label=f'{member.display_name} | {game}', value=str(member.id)) for member,game in zip(self.membersList, self.games)]
-        )
-        select.callback = self.join_user_callback  # Przypisanie funkcji callback
+            options=[discord.SelectOption(label=f'{member.display_name} | {game}', 
+                                          value=str(member.id)) for member, game in zip(self.members_to_select_list, self.games_in_tables)])
+        
+        select.callback = self.join_user_callback 
         self.add_item(select)
 
     async def join_user_callback(self, interaction: discord.Interaction):
-        self.bookedPersonID = interaction.data['values'][0]
+        #interaction.data['values'][0] zwraca stringa dlatego konwertujemy na inta
+        self.selected_member = self.guild.get_member(int(interaction.data['values'][0]))
         self.children[0].disabled = True
         await interaction.message.edit(view = self)
         await interaction.response.defer()
@@ -168,28 +174,30 @@ class SelectGameView(View):
 class SelectUserView(View):
     def __init__(self,interaction: discord.Interaction):
         super().__init__()
-        self.membersList = interaction.guild.members
+        self.guild = interaction.guild
+        self.all_members_in_guild_list: list[discord.Member] = interaction.guild.members
+        self.members_to_select_list: list[discord.Member] = []
     
-        self.bookedPerson = ""
-        self.members_to_select = []
+        self.selected_member: discord.Member = None
 
-        for member in self.membersList:
+        for member in self.all_members_in_guild_list:
                 if member != interaction.user and not member.bot:
-                    self.members_to_select.append(member)
+                    self.members_to_select_list.append(member)
         
-        for member in self.members_to_select:
-            if table.is_in_table(str(member.id)):
-                self.members_to_select.remove(member)
+        for member in self.members_to_select_list:
+            if table.is_person_in_table_check(member.id):
+                self.members_to_select_list.remove(member)
 
         select = Select(
             placeholder="Użytkownik",
-            options=[discord.SelectOption(label=member.display_name, value=str(member.id)) for member in self.members_to_select]
+            options=[discord.SelectOption(label=member.display_name, value=member.id) for member in self.members_to_select_list]
         )
         select.callback = self.user_select_callback  # Przypisanie funkcji callback
         self.add_item(select)
     
     async def user_select_callback(self, interaction: discord.Interaction):
-        self.bookedPerson = interaction.data['values'][0]
+        #interaction.data['values'][0] zwraca stringa dlatego konwertujemy na inta
+        self.selected_member = self.guild.get_member(int(interaction.data['values'][0]))
         self.children[0].disabled = True
         await interaction.message.edit(view = self)
         await interaction.response.defer()
@@ -200,158 +208,147 @@ class ReservationTableView(View):
     def __init__(self,bot):
         super().__init__(timeout=None)
         self.bot = bot
-        self.memberClicked = []
+        self.members_clicked_list: list[int] = []
 
     @discord.ui.button(label="Zarezerwuj Stół!", style=discord.ButtonStyle.blurple, custom_id="1", row = 0)
     async def book_table(self, interaction: discord.Interaction, button: discord.ui.Button):
-        member = interaction.guild.get_member(interaction.user.id)
-        bookingPersonID = str(interaction.user.id)
-        bookedPersonID = ""
-        game = ""
-        clubMemberRoleID = 1243257402766397541 #PÓŹNIEJ ZMIENIĆ NA WŁAŚCIMY TAWERNIANY
-        select_user_view = SelectUserView(interaction=interaction)
-        select_game_view = SelectGameView()     
+        booking_person: discord.Member = interaction.guild.get_member(interaction.user.id)
+        partner_person: discord.Member = None
+        game: str = ""
+
+        select_user_view: View = SelectUserView(interaction=interaction)
+        select_game_view: View = SelectGameView()     
         
         await interaction.response.defer()
 
         
-        if await click_check(self.memberClicked,bookingPersonID,interaction) == False:
+        if await click_check(self.members_clicked_list,booking_person.id,interaction) == False:
             return
 
-        if await tables_chcecks(member,clubMemberRoleID,bookingPersonID,interaction) == False:
+        if await tables_chcecks(booking_person,interaction) == False:
             return
         
-        if table.is_in_table(bookingPersonID):
-            await interaction.user.send("Jesteś już na jakimś stole")
-            return
-        
-        self.memberClicked.append(bookingPersonID)
+        self.members_clicked_list.append(booking_person.id)
         try:     
             await interaction.user.send("Rezerwujesz teraz stół dla siebie i kogoś")
             await interaction.user.send("Wybierz użytkownika z którym chcesz zarezerwować stół", view=select_user_view)
             await interaction.user.send("Wybierz grę w którą chcecie grać",view=select_game_view) 
             await select_user_view.wait()
             await select_game_view.wait()   
-            bookedPersonID = str(select_user_view.bookedPerson)
+            
+            partner_person = select_user_view.selected_member
+            
             game = select_game_view.game
 
-            await interaction.user.send(f"{member.display_name} zarezerwowałeś stół dla siebie i {interaction.guild.get_member(int(bookedPersonID)).display_name}\nBędziecie grać w grę {game}")
-            table.book_table(bookingPersonID,bookedPersonID,game)   
+            await interaction.user.send(f"{booking_person.display_name} zarezerwowałeś stół dla siebie i {partner_person.display_name}\nBędziecie grać w grę {game}")
+            table.book_table_with_someone(booking_person.id,partner_person.id,game)   
             await edit_msg(self.bot)
-            self.memberClicked.remove(bookingPersonID)
+            self.members_clicked_list.remove(booking_person.id)
 
         
         except asyncio.TimeoutError:
             await interaction.user.send("Zbyt długo czekałeś.")
-            self.memberClicked.remove(bookingPersonID)
+            self.members_clicked_list.remove(booking_person.id)
 
 
     @discord.ui.button(label="Tylko Dla Siebie", style=discord.ButtonStyle.blurple, custom_id="2", row = 0)
     async def book_table_me(self, interaction: discord.Interaction, button: discord.ui.Button):
-        member = interaction.guild.get_member(interaction.user.id)
-        clubMemberRoleID = 1243257402766397541
-        bookingPersonID = str(interaction.user.id)
-        select_game_view = SelectGameView()   
-        game = ""
+        booking_person: discord.Member = interaction.user
+        select_game_view: View = SelectGameView()   
+        game: str = ""
         
         await interaction.response.defer()
         
-        if await click_check(self.memberClicked,bookingPersonID,interaction) == False:
+        if await click_check(self.members_clicked_list,booking_person.id,interaction) == False:
             return
         
-        if await tables_chcecks(member,clubMemberRoleID,bookingPersonID,interaction) == False:
+        if await tables_chcecks(booking_person,interaction) == False:
             return
-        
-        if table.is_in_table(bookingPersonID):
-            await interaction.user.send("Jesteś już na jakimś stole")
-            return
-        
-        self.memberClicked.append(bookingPersonID)
+
+        self.members_clicked_list.append(booking_person.id)
         try:
             await interaction.user.send("Wybierz grę w którą chcesz zagrać",view=select_game_view) 
             await select_game_view.wait()   
             game = select_game_view.game
 
-            await interaction.user.send(f"{member.display_name} zarezerwowałeś stół!\nChcesz grać w grę: {game}")
-            table.book_table_myself(bookingPersonID,game)
+            await interaction.user.send(f"{booking_person.display_name} zarezerwowałeś stół!\nChcesz grać w grę: {game}")
+            
+            table.book_table_for_myself(booking_person.id,game)
             await edit_msg(self.bot)
-            self.memberClicked.remove(bookingPersonID)
+            self.members_clicked_list.remove(booking_person.id)
 
         except asyncio.TimeoutError:
-            self.memberClicked.remove(bookingPersonID)
+            self.members_clicked_list.remove(booking_person.id)
             await interaction.user.send("Zbyt długo czekałeś.")
 
     @discord.ui.button(label="Dołącz Do Kogoś", style=discord.ButtonStyle.blurple, custom_id="3", row = 0)
     async def join_table(self, interaction: discord.Interaction, button: discord.ui.Button):
-        member = interaction.guild.get_member(interaction.user.id)
-        bookingPersonID = str(member.id)
-        clubMemberRoleID = 1243257402766397541
-        bookedPersonID = ""
-        select_join_user_view = SelectJoinUserView(interaction=interaction)
+        booking_person: discord.Member = interaction.user
+        partner_person: discord.Member = None
+        
+        select_join_user_view: View = SelectJoinUserView(interaction=interaction)
 
         await interaction.response.defer()
 
-        if await click_check(self.memberClicked,bookingPersonID,interaction) == False:
+        if await click_check(self.members_clicked_list,booking_person.id,interaction) == False:
             return
         
-        if await tables_chcecks(member,clubMemberRoleID,bookingPersonID,interaction) == False:
+        if await tables_chcecks(booking_person,interaction) == False:
             return
         
-        if table.join_table_check():
+        if table.are_all_tables_empty_check():
             await interaction.user.send("Wszystkie stoły są puste. Zarezerwuj stół dla siebie albo z kimś")
             return
     
-        if table.is_in_table(bookingPersonID):
-            await interaction.user.send("Jesteś już na jakimś stole")
-            return
         
-        self.memberClicked.append(bookingPersonID)
+        self.members_clicked_list.append(booking_person.id)
+        
         try:
             await interaction.user.send("Rezerwujesz teraz stół dla siebie i kogoś")
             await interaction.user.send("Wybierz użytkownika z którym chcesz zarezerwować stół", view=select_join_user_view)
             await select_join_user_view.wait()
-            bookedPersonID = str(select_join_user_view.bookedPersonID)
-            table.join_table(bookingPersonID, bookedPersonID)
-            bookedPerson = interaction.guild.get_member(int(bookedPersonID))
-            await interaction.user.send(f"{member.display_name} dołączyłeś do: {bookedPerson.display_name}")
+            
+            partner_person = select_join_user_view.selected_member
+            
+            table.join_table(booking_person.id, partner_person.id)
+            
+            await interaction.user.send(f"{booking_person.display_name} dołączyłeś do: {partner_person.display_name}")
             await edit_msg(self.bot)
-            self.memberClicked.remove(bookingPersonID)
+            self.members_clicked_list.remove(booking_person.id)
         
         except asyncio.TimeoutError:
-            self.memberClicked.remove(bookingPersonID)
+            self.members_clicked_list.remove(booking_person.id)
             await interaction.user.send("Zbyt długo czekałeś.")
 
     @discord.ui.button(label="Zrezygnuj ze stołu", style=discord.ButtonStyle.red, custom_id="4", row = 1)
     async def cancel_table(self, interaction: discord.Interaction, button: discord.ui.Button):
-        personID = interaction.user.id
-        member = interaction.guild.get_member(personID)
+        canceling_person = interaction.user
         
         await interaction.response.defer()
 
-        if table.cancel_table_check(str(personID)):
-            await interaction.user.send(f"{member.display_name} zrezygnowałeś z rezerwacji stołu")
-            table.cancel_table(str(personID))
-            await edit_msg(self.bot)
-        else:
+        if table.is_person_in_table_check(canceling_person.id) == False:
             await interaction.user.send("Nie rezerwowałeś żadnego stołu.")
+            return
+
+        await interaction.user.send(f"{canceling_person.display_name} zrezygnowałeś z rezerwacji stołu")
+        table.cancel_table(canceling_person.id)
+        await edit_msg(self.bot)
+   
 
 ####--FUNKCJE POMOCNICZE--####
 
+async def tables_chcecks(booking_person: discord.Member, interaction: discord.Interaction) -> bool:
+    club_member_role_ID: int = 1243257402766397541
 
-async def tables_chcecks(member: discord.Member, clubMemberRoleID: int, bookingPersonID: int, interaction: discord.Interaction) -> bool:
-    if not member.get_role(clubMemberRoleID):
+    if not booking_person.get_role(club_member_role_ID):
         await interaction.user.send("Tylko członkowie klubu mogą rezerwować stoły!")
         return False 
 
-    if table.book_check(bookingPersonID):
-        await interaction.user.send("Zarezerwowałeś już stół!\nJeden stół na osobę lub parę!")
-        return False
-
-    if table.in_table_check(bookingPersonID):
+    if table.is_person_in_table_check(booking_person.id):
         await interaction.user.send("Jesteś już w zarezerwowanym stole!\nJeden stół na osobą lub parę!")
         return False
 
-    if table.join_table_check():
+    if table.are_all_tables_booked_check():
         await interaction.user.send("Wybacz wszystkie stoły są już zajęte.")
         return False
     
@@ -374,12 +371,12 @@ def embed_tables_info(guild: discord.Guild) -> discord.Embed:
     embed.add_field(name="Najbliższa sobota", value=next_saturday.strftime('%d.%m.%Y'), inline=False)
 
     for key, value in data.items():
-        if not value['Osoba 1']: 
+        if value['Osoba_1_ID'] == 0: 
             #await interaction.user.send(f"Stół {key} jest pusty i możliwy do zarezerwowania.\n")
             embed.add_field(name=f"Stół {key}", value="Stół jest pusty i możliwy do zarezerwowania.", inline=False)
         else:
-            osoba1 = guild.get_member(int(value['Osoba 1']))
-            osoba2 = guild.get_member(int(value['Osoba 2'])) if value['Osoba 2'] else ""
+            osoba1 = guild.get_member(value['Osoba_1_ID'])
+            osoba2 = guild.get_member(value['Osoba_2_ID']) if value['Osoba_2_ID'] else ""
             game = value['Gra']
             embed.add_field(name=f"Stół {key}",
                             value=f"Zarezerwowany przez: {osoba1.display_name}\n \
@@ -388,15 +385,15 @@ def embed_tables_info(guild: discord.Guild) -> discord.Embed:
                             inline=False)
     return embed
 
-async def click_check(memberClicked: list, bookingPersonID: str, interaction: discord.Interaction) -> bool:
-    for member in memberClicked:
-        if member == bookingPersonID:
+async def click_check(members_clicked_list: list, booking_person_ID: int, interaction: discord.Interaction) -> bool:
+    for member in members_clicked_list:
+        if member == booking_person_ID:
             await interaction.user.send("Nacisnąłeś już guzik. Zarezerwuj stół albo poczekaj na timeout wiadomości.")
             return False
         
 async def edit_msg(bot: discord.Client) -> None:
     MESSAGE_ID = 1247521053585047602
-    guild = bot.get_guild(get_test_server_id())
-    channel = bot.get_channel(1247493839795523635)
-    msg_to_edit = await channel.fetch_message(MESSAGE_ID)
-    await msg_to_edit.edit(embed = embed_tables_info(guild))
+    CHANNEL = bot.get_channel(1247493839795523635)
+    GUILD = bot.get_guild(get_test_server_id())
+    msg_to_edit = await CHANNEL.fetch_message(MESSAGE_ID)
+    await msg_to_edit.edit(embed = embed_tables_info(GUILD))

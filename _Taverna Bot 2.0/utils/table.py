@@ -1,5 +1,4 @@
 import json
-from datetime import datetime
 
 def load_json():
     file = '_Taverna Bot 2.0/res/jsons/table.json'
@@ -12,112 +11,101 @@ def save_json(data):
     with open(file, 'w', encoding='utf-8') as file:
         json.dump(data, file, ensure_ascii=False, indent=2)
 
-def in_table_check(personID: str):
-    #Funkcja sprawdza czy jesteś już gdzieś zapisany i zwraca stosowny wynik nie przepuszczając Cie dalej w
-    #rezerwacji stołu.
+###------FLAGS------###
+def is_person_in_table_check(person_ID: int) -> bool:
+    #Funkcja sprawdza czy jesteś gdzieś zapisany 
+    #Zwraca True lub False
     data = load_json()
-    return any(personID in value_dict.values() for value_dict in data.values())
-
-def book_check(bookingPersonID: str):
-    #Funkcja sprawdza czy użytkownik jest już wpisany w słownik ergo zarezerwował już stół.
+    return any(person_ID in value_dict.values() for value_dict in data.values())
+      
+def are_all_tables_booked_check() -> bool:
+    #Funkcja sprawdzająca czy wszystkie stoły są już zabookowane.
+    # Zwróci True jeśli wszystkie stoły będą zajęte
+    # Zwróci False jeśli choć jeden będzie wolny.
+    #Funckja musi działać przy "Zarezerwój Stół!", "Zarezerwój dla siebie" oraz contex menu
     data = load_json()
-    areYouBookedYet = False
+    return all(value['Osoba_1_ID']!=0 for key, value in data.items()) 
 
-    for key,value in data.items():
-        if value['Osoba 1'].lower() == bookingPersonID.lower():
-            areYouBookedYet = True
-            return areYouBookedYet
-    return areYouBookedYet    
-
-def booked_table_check():
-    #Funkcja sprawdzająca czy wszystkie stoły są już zabookowane. Jeśli tak to discord wyśle stosowną wiadomość
-    #do użytkownika który chce zabookować stół.
+def are_all_tables_empty_check() -> bool:
+    #Funkcja sprawdzająca czy wszystkie stoły są już zabookowane.
+    # Zwróci True jeśli wszystkie stoły będą puste
+    # Zwróci False jeśli choć jeden będzie zajęty.
+    #Funckja musi działać przy "Zarezerwój Stół!", "Zarezerwój dla siebie" oraz contex menu
     data = load_json()
-    allBooked = all(value['Osoba 1'] for key, value in data.items())
-    return allBooked
+    return all(value['Osoba_1_ID'] == 0 for key, value in data.items()) 
 
-def book_table(bookingPersonID: str, bookedPersonID: str, game: str):
+def book_table_with_someone(booking_person_ID: int, partner_person_ID: int, game: str) -> None:
     #Funkcja wpisyjąca użytkownika, oponenta i grę do słownika. "Rezerwująca stół"
     data = load_json()
     for key,value in data.items():
-        if not value['Osoba 1']:
-            value['Osoba 1'] = bookingPersonID
-            value['Osoba 2'] = bookedPersonID
+        if value['Osoba_1_ID'] == 0:
+            value['Osoba_1_ID'] = booking_person_ID
+            value['Osoba_2_ID'] = partner_person_ID
             value['Gra'] = game 
-
             save_json(data)
             return
 
-def book_table_myself(bookingPersonID: str,game: str):
+def book_table_for_myself(booking_person_ID: int, game: str) -> None:
     #Funkcja wpisyjąca użytkownika i grę. Służy gdy ktoś chce rezerwować stół tylko dla siebie.
+    #Tutaj trzeba sprawdzić chcecka czy jest się już gdzieś zapisanym
     data = load_json()
     for key,value in data.items():
-        if not value['Osoba 1']:
-            value['Osoba 1'] = bookingPersonID
-            value['Osoba 2'] = ""
+        if value['Osoba_1_ID'] == 0:
+            value['Osoba_1_ID'] = booking_person_ID
+            value['Osoba_2_ID'] = 0
             value['Gra'] = game 
-
             save_json(data)
             return
 
-def show_booked() -> list:
-    data = load_json()
-    persons = []
-    games = []
-
-    for key,value in data.items():
-        if value['Osoba 1'] != "":
-            persons.append(value['Osoba 1'])
-            games.append(value['Gra'])
-    
-    return persons, games
-
-def join_table(bookingPersonID: str, bookedPersonID: str) -> None:
+def join_table(booking_person_ID: int, person_in_table_ID: int) -> None:
     #Funkcja wpisyjąca dołączanie do innego użytkownika.
+    #Nie wiem czy nie dopisać chcecka do tego czy stół jest wolny czy nie.
+    #Ale to chyba nie ma znaczenia.
     data = load_json()
     for key,value in data.items():
-        if value['Osoba 1'] == bookedPersonID and value['Osoba 2'] == "":
-            value['Osoba 2'] = bookingPersonID
-            save_json(data)    
-        
-def join_table_check() -> bool:
-    #Funkcja sprawdzająca czy wszystkie stoły są już zabookowane. Jeśli tak to discord wyśle stosowną wiadomość
-    #do użytkownika który chce zabookować stół.
-    data = load_json()
-    allJoined = all(value['Osoba 2'] for key, value in data.items())
-    return allJoined
+        if value['Osoba_1_ID'] == person_in_table_ID and value['Osoba_2_ID'] == 0:
+            value['Osoba_2_ID'] = booking_person_ID
+            save_json(data)
+            return    
 
-def is_in_table(person: str) -> bool:
-    data = load_json()
-    for key,value in data.items():
-        if value['Osoba 1'] == person or value['Osoba 2'] == person:
-            return True
-
-def cancel_table_check(personID: str) -> bool:
-    #Sprawdza czy ktoś rezerwował stół. Jeśli tak to jest w słowniku. Jesli nie to Discord wyśle wiadomość że
-    #osoba nie rezerwowała żadnego stołu.
-    data = load_json()
-    return any(personID in value_dict.values() for value_dict in data.values())
-
-def cancel_table(personID: str):
-    #Jeśli cancle_table_chceck zwróci True to uruchamia się ta funkcja czyszcząca słownik
+def cancel_table(canceling_person_ID: int) -> None:
+    #Jeśli is_person_in_table_check() zwróci True to uruchamia się ta funkcja czyszcząca słownik
     data = load_json()
     for key, value in data.items():
-        if value['Osoba 1'].lower() == personID.lower():
-            value['Osoba 1'] = value['Osoba 2']
-            value['Osoba 2'] = ""
-            #value.update({'Osoba 1': '', 'Osoba 2': '', 'Gra': ''})
+        if value['Osoba_1_ID'] == canceling_person_ID and value['Osoba_2_ID'] == 0:
+            value['Osoba_1_ID'] = 0
+            value['Gra'] = ""
             save_json(data)
+            return
         
-        if value['Osoba 2'].lower() == personID.lower():
-            value['Osoba 2'] = ""
+        if value['Osoba_1_ID'] == canceling_person_ID:
+            value['Osoba_1_ID'] = value['Osoba_2_ID']
+            value['Osoba_2_ID'] = 0
             save_json(data)
+            return
 
+        if value['Osoba_2_ID'] == canceling_person_ID:
+            value['Osoba_2_ID'] = 0
+            save_json(data)
+            return
 
-#TO BĘDZIE TASKIEM W DISCORDZIE
-def clear_all_tables():
+def return_booked_tables() -> tuple:
+    #Funkcja pokazuje wszystkie zabookowane dotychczas stoły.
+    #Jest potrzebna do dołączania do czyjegoś stołu.
     data = load_json()
-    #if datetime.today().day == 1:
+    persons_in_tables: list[int] = []
+    games_in_tables: list[str] = []
+
+    for key,value in data.items():
+        if value['Osoba_1_ID'] != 0 and value['Osoba_2_ID'] == 0:
+            persons_in_tables.append(value['Osoba_1_ID'])
+            games_in_tables.append(value['Gra'])
+    
+    return persons_in_tables, games_in_tables
+
+def clear_all_tables() -> None:
+    #Czyści wszystkie stoły
+    data = load_json()
     for value in data.values():
-        value.update({'Osoba 1': '', 'Osoba 2': '', 'Gra': ''})
+        value.update({'Osoba_1_ID': 0, 'Osoba_2_ID': 0, 'Gra': ''})
     save_json(data)
