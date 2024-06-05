@@ -4,6 +4,56 @@ from utils.config import TEST_SERVER
 from discord.ui import View
 import utils.new_game as newGame
 
+class WH40KCog(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+    
+    @commands.command(aliases = ['game'])
+    async def new_game(self,ctx):
+        deploy: str = ""
+        primary: str = ""
+        rule: str = ""
+
+        selectDeployView = Deploy()
+        selectPrimaryView = Primary()
+        selectRuleView = Rule()
+
+        await ctx.send("Wybierz Deployment:",view = selectDeployView)
+        await ctx.send("Wybierz Primary Mission:",view = selectPrimaryView)
+        await ctx.send("Wybierz Mission Rule:",view = selectRuleView)
+        
+        await selectDeployView.wait()
+        deploy = str(selectDeployView.deploy)
+
+        await selectPrimaryView.wait()
+        primary = str(selectPrimaryView.primary)
+
+        await selectRuleView.wait()
+        rule = str(selectRuleView.rule)
+        
+        await ctx.send("# Deployment")
+        await ctx.send(file=discord.File(newGame.show_deplo(deploy)))
+        
+        #await ctx.send("Wasz Primary Mission")
+        await ctx.send(newGame.show_primary(primary))
+
+        await ctx.send(newGame.show_primary(rule))
+
+    @commands.command()
+    async def random_game(self,ctx):
+        deplo, primary, rule = newGame.return_random_game()
+        print(type(deplo))
+        print(type(primary))
+        print(type(rule))
+
+        await ctx.send("# Deployment")
+        await ctx.send(file=discord.File(deplo))
+        await ctx.send(primary)
+        await ctx.send(rule)
+
+async def setup(bot:commands.Bot) -> None:
+    await bot.add_cog(WH40KCog(bot), guild=TEST_SERVER)
+
 class Deploy(View):
     deploy = ""
 
@@ -73,40 +123,3 @@ class Rule(View):
         await interaction.response.defer()
         self.stop()
 
-class WH40KCog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
-    
-    @commands.command(aliases = ['game'])
-    async def new_game(self,ctx):
-        deploy = ""
-        primary = ""
-        rule = ""
-
-        selectDeployView = Deploy()
-        selectPrimaryView = Primary()
-        selectRuleView = Rule()
-
-        await ctx.send("Wybierz Deployment:",view = selectDeployView)
-        await ctx.send("Wybierz Primary Mission:",view = selectPrimaryView)
-        await ctx.send("Wybierz Mission Rule:",view = selectRuleView)
-        
-        await selectDeployView.wait()
-        deploy = str(selectDeployView.deploy)
-
-        await selectPrimaryView.wait()
-        primary = str(selectPrimaryView.primary)
-
-        await selectRuleView.wait()
-        rule = str(selectRuleView.rule)
-        
-        await ctx.send("Wasz deployment")
-        await ctx.send(file=discord.File(newGame.show_deplo(deploy)))
-        
-        await ctx.send("Wasz Primary Mission")
-        await ctx.send(newGame.show_primary(primary))
-
-        print(f"{rule}")
-
-async def setup(bot:commands.Bot) -> None:
-    await bot.add_cog(WH40KCog(bot), guild=TEST_SERVER)
