@@ -97,7 +97,7 @@ class GenerateMissionView(View):
                 self.members_clicked_list.remove(clicking_person.id)
                 await interaction.user.send("Zbyt długo czekałeś.")
 
-        for time in range(3, 0, -1):
+        for time in range(2, 0, -1):
             await asyncio.sleep(1)
             if time == 1:
                 self.members_clicked_list.remove(clicking_person.id)
@@ -115,9 +115,9 @@ class GenerateMissionView(View):
 
     @discord.ui.button(label="Ustawiana Misja", style=discord.ButtonStyle.blurple, custom_id="2", row = 0)
     async def custom_mission(self, interaction: discord.Interaction, button: discord.ui.Button):
-        deplo: str = ""
-        primary: str = ""
-        rule: str = ""
+        deplo = None
+        primary = None
+        rule = None
         clicking_person:discord.Member = interaction.user
 
         selectDeployView: View = Deploy()
