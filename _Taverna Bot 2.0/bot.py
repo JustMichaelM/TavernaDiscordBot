@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from utils.config import TEST_SERVER, get_application_id, get_token
 from cogs.reservation import ReservationTableView
+from cogs.wh40k import GenerateMissionView
 
 class TavernaBot(commands.Bot):
     def __init__(self):
@@ -22,6 +23,7 @@ class TavernaBot(commands.Bot):
             print(f"Loaded {ext}")
         
         self.add_view(ReservationTableView(self))
+        self.add_view(GenerateMissionView(self))
 
         self.tree.copy_global_to(guild=TEST_SERVER)
         synced = await self.tree.sync(guild=TEST_SERVER) 

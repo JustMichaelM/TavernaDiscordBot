@@ -3,6 +3,7 @@ from discord.ext import commands
 from utils.config import TEST_SERVER
 from discord.ui import View
 import utils.new_game as newGame
+import asyncio
 
 class WH40KCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -42,17 +43,121 @@ class WH40KCog(commands.Cog):
     @commands.command()
     async def random_game(self,ctx):
         deplo, primary, rule = newGame.return_random_game()
-        print(type(deplo))
-        print(type(primary))
-        print(type(rule))
 
         await ctx.send("# Deployment")
         await ctx.send(file=discord.File(deplo))
         await ctx.send(primary)
         await ctx.send(rule)
 
+    @commands.command()
+    @commands.is_owner()
+    async def show_view(self, ctx):
+        await ctx.message.delete()
+        embed = discord.Embed(title="Wygeneruj sobie misję", description="", color=discord.Color.blue())
+        view = GenerateMissionView(self.bot)
+        await ctx.send(embed=embed, view=view)
+
 async def setup(bot:commands.Bot) -> None:
     await bot.add_cog(WH40KCog(bot), guild=TEST_SERVER)
+
+class GenerateMissionView(View):
+    def __init__(self,bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.members_clicked_list: list[int] = []
+        self.command_pattern_list: list[str] = []
+
+    @discord.ui.button(label="Losowa Misja", style=discord.ButtonStyle.blurple, custom_id="1", row = 0)
+    async def random_mission(self, interaction: discord.Interaction, button: discord.ui.Button):
+        clicking_person = interaction.user
+        deplo: str = ""
+        primary: str = ""
+        rule: str = ""
+        
+        await interaction.response.defer()
+
+        #print(self.members_clicked_list)
+
+        if clicking_person.id in self.members_clicked_list:
+            await interaction.user.send("NO NIE KLIKAJ TYLE TYPIE!!!")
+            return
+        else:
+            self.members_clicked_list.append(clicking_person.id)
+            try:
+                deplo, primary, rule = newGame.return_random_game()
+                self.command_pattern_list.append(deplo)
+                self.command_pattern_list.append(primary)
+                self.command_pattern_list.append(rule)
+                #await interaction.user.send("# Deployment")
+                #await interaction.user.send(file=discord.File(deplo))
+                #await interaction.user.send(primary)
+                #await interaction.user.send(rule)
+
+            except asyncio.TimeoutError:
+                self.members_clicked_list.remove(clicking_person.id)
+                await interaction.user.send("Zbyt długo czekałeś.")
+
+        for time in range(3, 0, -1):
+            await asyncio.sleep(1)
+            if time == 1:
+                self.members_clicked_list.remove(clicking_person.id)
+                for command in self.command_pattern_list:
+                    if not command.endswith('.webp'):
+                        await interaction.user.send(command)
+                    else:
+                        await interaction.user.send(file=discord.File(command))
+                self.members_clicked_list = []
+                self.command_pattern_list = []
+
+
+
+    
+
+    @discord.ui.button(label="Ustawiana Misja", style=discord.ButtonStyle.blurple, custom_id="2", row = 0)
+    async def custom_mission(self, interaction: discord.Interaction, button: discord.ui.Button):
+        deplo: str = ""
+        primary: str = ""
+        rule: str = ""
+        clicking_person:discord.Member = interaction.user
+
+        selectDeployView: View = Deploy()
+        selectPrimaryView: View = Primary()
+        selectRuleView: View = Rule()
+
+        await interaction.response.defer()
+        
+        if clicking_person.id in self.members_clicked_list:
+            await interaction.user.send("NO NIE KLIKAJ TYLE TYPIE!!!")
+            return
+        #await click_check(self.members_clicked_list,interaction)
+
+
+        self.members_clicked_list.append(clicking_person.id)
+        try:
+            await interaction.user.send("Wybierasz teraz misje")
+            await interaction.user.send("Wybierz Deployment:",view = selectDeployView)
+            await interaction.user.send("Wybierz Primary Mission:",view = selectPrimaryView)
+            await interaction.user.send("Wybierz Mission Rule:",view = selectRuleView)
+            await selectDeployView.wait()
+            await selectPrimaryView.wait()
+            await selectRuleView.wait()
+            deplo = str(selectDeployView.deploy)
+            primary = str(selectPrimaryView.primary)
+            rule = str(selectRuleView.rule)
+
+            await interaction.user.send("# Deployment")
+            await interaction.user.send(file=discord.File(newGame.return_deplo(deplo)))
+            
+            #await ctx.send("Wasz Primary Mission")
+            await interaction.user.send(newGame.return_primary(primary))
+
+            await interaction.user.send(newGame.return_primary(rule))
+            self.members_clicked_list.remove(clicking_person.id)
+        
+        except asyncio.TimeoutError:
+            self.members_clicked_list.remove(clicking_person.id)
+            await interaction.user.send("Zbyt długo czekałeś.")
+
 
 class Deploy(View):
     deploy = ""
@@ -123,3 +228,11 @@ class Rule(View):
         await interaction.response.defer()
         self.stop()
 
+async def click_check(members_clicked_list: list[int], interaction: discord.Interaction) -> None:
+    member: int = interaction.user.id
+    if member in members_clicked_list:
+        await interaction.response.send_message("Nie klikaj tyle!\nOchłoń sobie przez 5 sekund",ephemeral=True)
+        for time in range(4, 0, -1):
+            await asyncio.sleep(1)
+            await interaction.response.edit_original_respone(content = f"Nie klikaj tyle!\nOchłoń sobie przez {time} sekund")
+        await interaction.delete_original_response() 
