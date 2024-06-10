@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from utils.config import TEST_SERVER
 from discord.ui import View
-import utils.new_game as newGame
+import utils.wh40k as wh40k
 import asyncio
 
 class WH40KCog(commands.Cog):
@@ -33,16 +33,16 @@ class WH40KCog(commands.Cog):
         rule = str(selectRuleView.rule)
         
         await ctx.send("# Deployment")
-        await ctx.send(file=discord.File(newGame.show_deplo(deploy)))
+        await ctx.send(file=discord.File(wh40k.show_deplo(deploy)))
         
         #await ctx.send("Wasz Primary Mission")
-        await ctx.send(newGame.show_primary(primary))
+        await ctx.send(wh40k.show_primary(primary))
 
-        await ctx.send(newGame.show_primary(rule))
+        await ctx.send(wh40k.show_primary(rule))
 
     @commands.command()
     async def random_game(self,ctx):
-        deplo, primary, rule = newGame.return_random_game()
+        deplo, primary, rule = wh40k.return_random_game()
 
         await ctx.send("# Deployment")
         await ctx.send(file=discord.File(deplo))
@@ -56,6 +56,25 @@ class WH40KCog(commands.Cog):
         embed = discord.Embed(title="Wygeneruj sobie misję", description="", color=discord.Color.blue())
         view = GenerateMissionView(self.bot)
         await ctx.send(embed=embed, view=view)
+    
+    @commands.is_owner()
+    @commands.command(aliases = ['addB'])
+    async def add_battle_to_tournament(self, ctx):
+        deployment, primary, mission_rule = wh40k.return_random_game()
+        time = ""
+        wh40k.add_battle_to_tournament(time,deployment,primary,mission_rule)
+    
+    @commands.command()
+    async def show_tournamnet_battles(self, ctx):
+        battles_list = wh40k.show_battles()
+
+        for elem in battles_list:
+            if elem.endswith('.webp'): 
+                await ctx.send(file=discord.File(elem))
+            elif elem != "":
+                await ctx.send(elem)
+            else:
+                await ctx.send("Tu będzie godzinka bitwy")
 
 async def setup(bot:commands.Bot) -> None:
     await bot.add_cog(WH40KCog(bot), guild=TEST_SERVER)
@@ -65,7 +84,7 @@ class GenerateMissionView(View):
         super().__init__(timeout=None)
         self.bot = bot
         self.members_clicked_list: list[int] = []
-        self.command_pattern_list: list[str] = []
+        self.command_list: list[str] = []
 
     @discord.ui.button(label="Losowa Misja", style=discord.ButtonStyle.blurple, custom_id="1", row = 0)
     async def random_mission(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -84,10 +103,10 @@ class GenerateMissionView(View):
         else:
             self.members_clicked_list.append(clicking_person.id)
             try:
-                deplo, primary, rule = newGame.return_random_game()
-                self.command_pattern_list.append(deplo)
-                self.command_pattern_list.append(primary)
-                self.command_pattern_list.append(rule)
+                deplo, primary, rule = wh40k.return_random_game()
+                self.command_list.append(deplo)
+                self.command_list.append(primary)
+                self.command_list.append(rule)
                 #await interaction.user.send("# Deployment")
                 #await interaction.user.send(file=discord.File(deplo))
                 #await interaction.user.send(primary)
@@ -107,10 +126,7 @@ class GenerateMissionView(View):
                     else:
                         await interaction.user.send(file=discord.File(command))
                 self.members_clicked_list = []
-                self.command_pattern_list = []
-
-
-
+                self.command_list = []
     
 
     @discord.ui.button(label="Ustawiana Misja", style=discord.ButtonStyle.blurple, custom_id="2", row = 0)
@@ -146,12 +162,12 @@ class GenerateMissionView(View):
             rule = str(selectRuleView.rule)
 
             await interaction.user.send("# Deployment")
-            await interaction.user.send(file=discord.File(newGame.return_deplo(deplo)))
+            await interaction.user.send(file=discord.File(wh40k.return_deplo(deplo)))
             
             #await ctx.send("Wasz Primary Mission")
-            await interaction.user.send(newGame.return_primary(primary))
+            await interaction.user.send(wh40k.return_primary(primary))
 
-            await interaction.user.send(newGame.return_primary(rule))
+            await interaction.user.send(wh40k.return_primary(rule))
             self.members_clicked_list.remove(clicking_person.id)
         
         except asyncio.TimeoutError:

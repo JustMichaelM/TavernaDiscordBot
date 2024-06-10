@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 from utils.config import TEST_SERVER, get_application_id, get_token
-from cogs.reservation import ReservationTableView
-from cogs.wh40k import GenerateMissionView
+from cogs.reservationCog import ReservationTableView
+from cogs.wh40kCog import GenerateMissionView
 
 class TavernaBot(commands.Bot):
     def __init__(self):
@@ -12,9 +12,10 @@ class TavernaBot(commands.Bot):
             application_id = get_application_id())
         
         self.ext = [    
-            "cogs.meme",
-            "cogs.reservation",
-            "cogs.wh40k"
+            "cogs.memeCog",
+            "cogs.reservationCog",
+            "cogs.wh40kCog",
+            "cogs.testCog"
             ]
     
     async def setup_hook(self):
