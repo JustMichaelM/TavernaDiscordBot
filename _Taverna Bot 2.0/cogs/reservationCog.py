@@ -16,11 +16,13 @@ dt_pl = dt_utcnow.astimezone(pytz.timezone("Europe/Warsaw"))
 class TableReservationCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        '''
         self.ctx_menu = app_commands.ContextMenu(
             name='Zerezerwujcie sobie stół',
             callback=self.book_table_callback 
         )
         self.bot.tree.add_command(self.ctx_menu)
+        '''
         self.task_clear_tables.start()
         self.task_table_reminder.start()
         
@@ -70,7 +72,7 @@ class TableReservationCog(commands.Cog):
         table.clear_all_tables()
         await edit_msg(self.bot)
 
-
+    '''
     #@app_commands.context_menu(name ="Zarezerwój stół z użytkownikiem")
     async def book_table_callback(self, interaction: discord.Interaction, member: discord.Member):
         booking_person = interaction.user
@@ -95,7 +97,7 @@ class TableReservationCog(commands.Cog):
             await interaction.edit_original_response(content = f"Udało Ci się zarezerwować stół!\nTą wiadomość widzisz tylko Ty.\nWiadomość zostanie usunięta za {time}")
         
         await interaction.delete_original_response()
-
+    '''
     @table.error
     async def error(self, ctx, error):
         if isinstance(error, commands.NotOwner):

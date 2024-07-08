@@ -15,7 +15,8 @@ class TavernaBot(commands.Bot):
             "cogs.memeCog",
             "cogs.reservationCog",
             "cogs.wh40kCog",
-            "cogs.testCog"
+            #"cogs.testCog",
+            "cogs.reminderCog"
             ]
     
     async def setup_hook(self):
