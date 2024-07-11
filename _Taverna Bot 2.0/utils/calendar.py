@@ -2,13 +2,13 @@ import json
 from datetime import datetime
 
 def load_json():
-    file = 'json/calendar.json'
+    file = "_Taverna Bot 2.0/res/jsons/calendar.json"
     with open(file, 'r', encoding='utf-8') as data:
         dane = json.load(data)
     return dane
 
 def save_json(data):
-    file = 'json/calendar.json'
+    file = '_Taverna Bot 2.0/res/jsons/calendar.json'
     with open(file, 'w', encoding='utf-8') as file:
         json.dump(data, file, ensure_ascii=False, indent=2)
 
@@ -23,28 +23,20 @@ def clear_calendar():
     data.clear()
     save_json(data)
 
-def add_event():
+def add_event(nazwa: str, termin: str) -> None:
     dane = load_json()
-    eventNumber = len(dane) + 1
-    
-    nazwa = input("Podaj nazwę wydarzenia: ")
-    data = input("Podaj datę wydarzenia (w formacie DD/MM) zostanie dopisany na ten rok: ")
-    
-    while date_check(data) == False:
-        print("Podałeś złą datę. Podaj jeszcze raz")
-        data = input("Podaj datę wydarzenia (w formacie DD/MM). Zostanie dopisany na ten rok: ")
-    
-    newEvent = {
-        f"Event {eventNumber}": 
+    event_number = len(dane) + 1
+
+    new_event = {
+        f"Event {event_number}": 
         {
             "Nazwa": f"{nazwa}",
-            "Data": f"{data}/{datetime.now().year}" 
+            "Data": f"{termin}/{datetime.now().year}" 
         }
     }
 
-    dane.update(newEvent)
+    dane.update(new_event)
     save_json(dane)
-    print("Dodano nowe wydarzenie.")
 
 def date_check(data):
     try:

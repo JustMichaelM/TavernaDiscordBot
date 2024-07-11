@@ -250,5 +250,5 @@ async def click_check(members_clicked_list: list[int], interaction: discord.Inte
         await interaction.response.send_message("Nie klikaj tyle!\nOchłoń sobie przez 5 sekund",ephemeral=True)
         for time in range(4, 0, -1):
             await asyncio.sleep(1)
-            await interaction.response.edit_original_respone(content = f"Nie klikaj tyle!\nOchłoń sobie przez {time} sekund")
+            await interaction.edit_original_response(content = f"Nie klikaj tyle!\nOchłoń sobie przez {time} sekund")
         await interaction.delete_original_response() 
