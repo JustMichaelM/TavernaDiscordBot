@@ -16,13 +16,14 @@ class TavernaBot(commands.Bot):
             "cogs.reservationCog",
             "cogs.wh40kCog",
             "cogs.reminderCog",
-            "cogs.eventCog"
+            "cogs.eventCog",
+            "cogs.calendarCog"
             ]
     
     async def setup_hook(self):
         for ext in self.ext:
             await self.load_extension(ext)
-            print(f"Loaded {ext}")
+            #print(f"Loaded {ext}")
         
         self.add_view(ReservationTableView(self))
         self.add_view(GenerateMissionView(self))
@@ -31,8 +32,8 @@ class TavernaBot(commands.Bot):
         synced = await self.tree.sync(guild=TEST_SERVER) 
         
         print(f"Load {str(len(synced))} slash commands on {TEST_SERVER.name}")
-        for cmd in synced:
-            print(f"Synced slash commands: {cmd}")        
+        #for cmd in synced:
+            #print(f"Synced slash commands: {cmd}")        
 
     async def on_ready(self):
         print(f'{self.user} is now running')

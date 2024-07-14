@@ -114,7 +114,7 @@ class TableReservationCog(commands.Cog):
     async def error(self, ctx, error):
         if isinstance(error, commands.NotOwner):
             await ctx.message.delete()
-            await ctx.author.send("Nie jesteś właścicielem bota i nie masz dostępu do komendy: clear")
+            await ctx.author.send("Nie jesteś właścicielem bota i nie masz dostępu do komendy: booked")
 
 async def setup(bot:commands.Bot) -> None:
     await bot.add_cog(TableReservationCog(bot), guild=TEST_SERVER)

@@ -18,38 +18,39 @@ def return_deplo(key: str) -> str:
 
 def return_primary(key: str) -> str:
     dane = load_json("_Taverna Bot 2.0/res/jsons/primary.json")
-    primary: str = " ".join(dane[key])
-    return primary
+    #primary: str = " ".join(dane[key])
+    return dane[key]
 
 def return_mission_rule(key: str) -> str:
     dane = load_json('_Taverna Bot 2.0/res/jsons/rule.json')
-    rule: str = " ".join(dane[key])
-    return rule
+    #rule: str = " ".join(dane[key])
+    return dane[key]
 
 def return_random_game() -> tuple:
     data = load_json('_Taverna Bot 2.0/res/jsons/deployment.json')
     deplo = random.choice(list(data.values()))
     
     data = load_json("_Taverna Bot 2.0/res/jsons/primary.json")    
-    primary = " ".join(random.choice(list(data.values())))
+    #primary = " ".join(random.choice(list(data.values())))
+    primary = random.choice(list(data.values()))
 
     data = load_json('_Taverna Bot 2.0/res/jsons/rule.json')
-    rule = " ".join(random.choice(list(data.values()))) 
+    #rule = " ".join(random.choice(list(data.values())))
+    rule = random.choice(list(data.values())) 
     
     return deplo, primary, rule
 
 def add_battle_to_tournament(time: str = "", deployment: str = "", primary: str = "", mission_rule: str = "") -> None:
     dane = load_json("_Taverna Bot 2.0/res/jsons/tournament.json")
-    t_rounds = dane["Roster"]
-    rounds = len(t_rounds) + 1
+    tournament_rounds = dane["Roster"]
+    rounds = len(tournament_rounds) + 1
     battle = f"Battle_{rounds}"
-    t_rounds[battle] = {"Time": time, "Deployment": deployment, "Primary": primary, "Mission_Rule": mission_rule}
+    tournament_rounds[battle] = {"Time": time, "Deployment": deployment, "Primary": primary, "Mission_Rule": mission_rule}
     save_json(dane)
 
 def show_rounds_in_tournament() -> None:
     dane = load_json("_Taverna Bot 2.0/res/jsons/tournament.json")
     
-
 def clear_tournament() -> None:
     dane = load_json("_Taverna Bot 2.0/res/jsons/tournament.json")
     dane["Competitors"] = []
