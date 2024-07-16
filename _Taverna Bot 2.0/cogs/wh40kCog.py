@@ -95,7 +95,6 @@ class GenerateMissionView(View):
         
         await interaction.response.defer()
 
-        #print(self.members_clicked_list)
 
         if clicking_person.id in self.members_clicked_list:
             await interaction.user.send("NO NIE KLIKAJ TYLE TYPIE!!!")

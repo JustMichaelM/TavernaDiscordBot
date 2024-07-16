@@ -1,7 +1,7 @@
 import discord
 import datetime
 import pytz
-import utils.calendar as calendar
+import utils.events as events
 from discord.ext import commands, tasks
 from utils.config import TEST_SERVER, get_test_server_id,get_channel_id
 
@@ -70,7 +70,7 @@ class ReminderCog(commands.Cog):
 
     @tasks.loop(time=datetime.time(hour=12, tzinfo=dt_pl.tzinfo))  # Loop uruchamiany codziennie o 12
     async def task_events_reminder(self, ctx):
-        data = calendar.load_json()
+        data = events.load_json()
         target_channel = self.guild.get_channel(get_channel_id("TEST_CHANNEL_ID")) #TO ZAMIENIĆ NA ODPOWIEDNI channel tawerniany
         
         embed = discord.Embed(title="Najbliższe zaplanowane wydarzenia", color=0x04ff00)

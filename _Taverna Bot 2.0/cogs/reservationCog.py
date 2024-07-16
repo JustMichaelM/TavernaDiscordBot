@@ -16,13 +16,6 @@ dt_pl = dt_utcnow.astimezone(pytz.timezone("Europe/Warsaw"))
 class TableReservationCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        '''
-        self.ctx_menu = app_commands.ContextMenu(
-            name='Zerezerwujcie sobie stół',
-            callback=self.book_table_callback 
-        )
-        self.bot.tree.add_command(self.ctx_menu)
-        '''
         self.task_clear_tables.start()
         self.task_table_reminder.start()
         
@@ -72,32 +65,6 @@ class TableReservationCog(commands.Cog):
         table.clear_all_tables()
         await edit_msg(self.bot)
 
-    '''
-    #@app_commands.context_menu(name ="Zarezerwój stół z użytkownikiem")
-    async def book_table_callback(self, interaction: discord.Interaction, member: discord.Member):
-        booking_person = interaction.user
-        partner_person = member
-
-        if await tables_chcecks(booking_person,interaction) == False:
-            await interaction.response.send_message("Coś poszło nie tak! Nie udało Ci się zarezerwować stołu\nNie przejmuj się, ta wiadomość zniknie po 5 sekundach", ephemeral=True)
-            for time in range(4, 0, -1):
-                await asyncio.sleep(1)
-                await interaction.edit_original_response(content = f"Coś poszło nie tak! Nie udało Ci się zarezerwować stołu\nNie przejmuj się, ta wiadomość zniknie po {time} sekundach")
-            await interaction.delete_original_response()
-            return
-        
-
-        table.book_table_with_someone(booking_person.id,partner_person.id,game="")
-        await edit_msg(self.bot)
-        
-        await interaction.response.send_message("Udało Ci się zarezerwować stół!\nTą wiadomość widzisz tylko Ty.\nWiadomość zostanie usunięta za 5 sekund", ephemeral=True)
-        
-        for time in range(4, 0, -1):
-            await asyncio.sleep(1)
-            await interaction.edit_original_response(content = f"Udało Ci się zarezerwować stół!\nTą wiadomość widzisz tylko Ty.\nWiadomość zostanie usunięta za {time}")
-        
-        await interaction.delete_original_response()
-    '''
     @table.error
     async def error(self, ctx, error):
         if isinstance(error, commands.NotOwner):
@@ -198,7 +165,6 @@ class SelectUserView(View):
         self.add_item(select)
     
     async def user_select_callback(self, interaction: discord.Interaction):
-        #interaction.data['values'][0] zwraca stringa dlatego konwertujemy na inta
         self.selected_member = self.guild.get_member(int(interaction.data['values'][0]))
         self.children[0].disabled = True
         await interaction.message.edit(view = self)
@@ -374,7 +340,6 @@ def embed_tables_info(guild: discord.Guild) -> discord.Embed:
 
     for key, value in data.items():
         if value['Osoba_1_ID'] == 0: 
-            #await interaction.user.send(f"Stół {key} jest pusty i możliwy do zarezerwowania.\n")
             embed.add_field(name=f"Stół {key}", value="Stół jest pusty i możliwy do zarezerwowania.", inline=False)
         else:
             osoba1 = guild.get_member(value['Osoba_1_ID'])
