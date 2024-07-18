@@ -18,7 +18,6 @@ class ReminderCog(commands.Cog):
         
     @commands.Cog.listener()
     async def on_ready(self):
-        print("Reminder Cog is ready!")
         self.guild = self.bot.get_guild(get_test_server_id()) #podmienić później na serwer tawerniany
     
     @tasks.loop(time=datetime.time(hour=12, tzinfo=dt_pl.tzinfo))  # Loop uruchamiany codziennie o 12

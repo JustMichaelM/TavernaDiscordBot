@@ -9,10 +9,6 @@ class EventCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("Event Cog is ready!")
-
     @app_commands.command(name="add_event", description="dodaj event do kalendarza")
     @app_commands.describe(nazwa = "Nazwa Event", data = "Data w formacie DD/MM")
     async def add(self, interaction: discord.Interaction, nazwa: str, data: str):

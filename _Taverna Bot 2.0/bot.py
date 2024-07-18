@@ -3,6 +3,8 @@ from discord.ext import commands
 from utils.config import TEST_SERVER, get_application_id, get_token
 from cogs.reservationCog import ReservationTableView
 from cogs.wh40kCog import GenerateMissionView
+from cogs.calendarCog import CalendarView
+import os
 
 class TavernaBot(commands.Bot):
     def __init__(self):
@@ -10,23 +12,20 @@ class TavernaBot(commands.Bot):
             command_prefix=commands.when_mentioned_or("tav "), 
             intents=discord.Intents.all(),
             application_id = get_application_id())
-        
-        self.ext = [    
-            "cogs.memeCog",
-            "cogs.reservationCog",
-            "cogs.wh40kCog",
-            "cogs.reminderCog",
-            "cogs.eventCog",
-            "cogs.calendarCog"
-            ]
     
     async def setup_hook(self):
-        for ext in self.ext:
-            await self.load_extension(ext)
-            #print(f"Loaded {ext}")
-        
+        #for ext in self.ext:
+            #await self.load_extension(ext)
+
+        for filename in os.listdir('_Taverna Bot 2.0/cogs'):
+            if filename.endswith('.py'):
+                ext = f"cogs.{filename[:-3]}"
+                await self.load_extension(ext)
+                print(f'{filename[:-3]} is ready!')
+
         self.add_view(ReservationTableView(self))
         self.add_view(GenerateMissionView(self))
+        self.add_view(CalendarView(self))
 
         self.tree.copy_global_to(guild=TEST_SERVER)
         synced = await self.tree.sync(guild=TEST_SERVER) 
@@ -37,7 +36,6 @@ class TavernaBot(commands.Bot):
 
     async def on_ready(self):
         print(f'{self.user} is now running')
-
 
 bot = TavernaBot()
 bot.run(get_token())

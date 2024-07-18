@@ -4,7 +4,6 @@ import os
 
 load_dotenv(dotenv_path='_Taverna Bot 2.0/res/.env')
 
-
 def get_token() -> str:
     return os.getenv("TOKEN")
 

@@ -8,10 +8,6 @@ class MemeCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    @commands.Cog.listener()
-    async def on_ready(self):
-        print("Meme Cog is ready!")
-
     @app_commands.command(name="ile", description="ile socha")
     async def ile(self, interaction: discord.Interaction):
         await interaction.response.send_message(content="https://tenor.com/bovsi.gif")
