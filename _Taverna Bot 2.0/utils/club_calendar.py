@@ -17,6 +17,28 @@ def add_to_calendar(day: str, name: int, time: int):
     data[day].append(time)
     save_json(data)
 
+def remove_from_calendar(day: str, id: int):
+    data = load_json()
+    temp_list = data[day.lower()]
+    index = temp_list.index(id)
+    temp_list.pop(index)
+    temp_list.pop(index)
+    save_json(data)
+
+def get_days_of_user(user_id: int):
+    data = load_json()
+    days = []
+    hours = []
+    for key, values in data.items():
+        for value in values:
+            if value == user_id:
+                hour_index = values.index(value)+1
+                time = values[hour_index]
+                hours.append(time)
+                days.append(key.capitalize())
+
+    return days, hours 
+
 def clear_calendar():
     data = load_json()
     for key, value in data.items():

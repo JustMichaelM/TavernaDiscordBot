@@ -14,9 +14,6 @@ class TavernaBot(commands.Bot):
             application_id = get_application_id())
     
     async def setup_hook(self):
-        #for ext in self.ext:
-            #await self.load_extension(ext)
-
         for filename in os.listdir('_Taverna Bot 2.0/cogs'):
             if filename.endswith('.py'):
                 ext = f"cogs.{filename[:-3]}"
