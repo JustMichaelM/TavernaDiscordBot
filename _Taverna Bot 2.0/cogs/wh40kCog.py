@@ -10,6 +10,7 @@ class WH40KCog(commands.Cog):
         self.bot = bot
     
     @commands.command(aliases = ['game'])
+    @commands.is_owner()
     async def new_game(self,ctx):
         deploy: str = ""
         primary: str = ""
@@ -41,6 +42,7 @@ class WH40KCog(commands.Cog):
         await ctx.send(wh40k.show_primary(rule))
 
     @commands.command()
+    @commands.is_owner()
     async def random_game(self,ctx):
         deplo, primary, rule = wh40k.return_random_game()
 
@@ -56,7 +58,8 @@ class WH40KCog(commands.Cog):
         embed = discord.Embed(title="Wygeneruj sobie misję", description="", color=discord.Color.blue())
         view = GenerateMissionView(self.bot)
         await ctx.send(embed=embed, view=view)
-    
+ 
+'''   
     @commands.is_owner()
     @commands.command(aliases = ['addB'])
     async def add_battle_to_tournament(self, ctx):
@@ -75,7 +78,7 @@ class WH40KCog(commands.Cog):
                 await ctx.send(elem)
             else:
                 await ctx.send("Tu będzie godzinka bitwy")
-
+'''
 async def setup(bot:commands.Bot) -> None:
     await bot.add_cog(WH40KCog(bot), guild=TEST_SERVER)
 

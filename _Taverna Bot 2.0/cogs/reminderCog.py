@@ -1,12 +1,9 @@
 import discord
 import datetime
-import pytz
 import utils.events as events
 from discord.ext import commands, tasks
-from utils.config import TEST_SERVER, get_test_server_id,get_channel_id
+from utils.config import TEST_SERVER, get_test_server_id,get_channel_id,get_pl_timezone
 
-dt_utcnow = datetime.datetime.now(tz=pytz.utc)
-dt_pl = dt_utcnow.astimezone(pytz.timezone("Europe/Warsaw"))
 
 class ReminderCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -20,7 +17,7 @@ class ReminderCog(commands.Cog):
     async def on_ready(self):
         self.guild = self.bot.get_guild(get_test_server_id()) #podmienić później na serwer tawerniany
     
-    @tasks.loop(time=datetime.time(hour=12, tzinfo=dt_pl.tzinfo))  # Loop uruchamiany codziennie o 12
+    @tasks.loop(time=datetime.time(hour=12, tzinfo=get_pl_timezone()))  # Loop uruchamiany codziennie o 12
     async def task_taxes_reminder(self, ctx):
         announcment_channel = self.guild.get_channel(1247523612215218267) #podmienić na odpowiedni channel tawerniany
         tax_channel = self.guild.get_channel(1247523612215218267) #Podmienić na odpowiedni channel tawerniany
@@ -34,7 +31,8 @@ class ReminderCog(commands.Cog):
                     \n\
                     :arrow_right: Jeśli chcesz dołączyć do klubu wejdź na ten kanał {announcment_channel.mention}. Tam dowiesz się więcej."
 
-        todayDate = datetime.datetime.now(tz=dt_pl.tzinfo)
+        pl_tzinfo = get_pl_timezone().tzinfo
+        todayDate = datetime.datetime.now(tz=pl_tzinfo)
         
         embed=discord.Embed(title="Comiesięczna przypominajka o składkach!", color=0x04ff00)
         embed.add_field(name=f"Numer konta znajdziecie tu: {tax_channel.mention}", value="", inline=False)
@@ -48,11 +46,12 @@ class ReminderCog(commands.Cog):
     async def task_taxes_reminder_before_loop(self):
         await self.bot.wait_until_ready()
 
-    @tasks.loop(time=datetime.time(hour=12, tzinfo=dt_pl.tzinfo))  # Loop uruchamiany codziennie o 12
+    @tasks.loop(time=datetime.time(hour=12, tzinfo=get_pl_timezone()))  # Loop uruchamiany codziennie o 12
     async def task_sponsorship_reminder(self, ctx):
         target_channel = self.guild.get_channel(get_channel_id("TEST_CHANNEL_ID")) #Zmienić później na jakiś channel tawerniany
 
-        day = datetime.datetime.now(tz=dt_pl.tzinfo)
+        pl_tzinfo = get_pl_timezone().tzinfo
+        day = datetime.datetime.now(tz=pl_tzinfo)
         
         value: str = "https://mgc.com.pl/ \n\
                     Dla członków klubu jest x procentowa zniżka!"
@@ -67,14 +66,15 @@ class ReminderCog(commands.Cog):
     async def task_sponsorship_reminder_before_loop(self):
         await self.bot.wait_until_ready()
 
-    @tasks.loop(time=datetime.time(hour=12, tzinfo=dt_pl.tzinfo))  # Loop uruchamiany codziennie o 12
+    @tasks.loop(time=datetime.time(hour=12, tzinfo=get_pl_timezone()))  # Loop uruchamiany codziennie o 12
     async def task_events_reminder(self, ctx):
         data = events.load_json()
         target_channel = self.guild.get_channel(get_channel_id("TEST_CHANNEL_ID")) #TO ZAMIENIĆ NA ODPOWIEDNI channel tawerniany
         
         embed = discord.Embed(title="Najbliższe zaplanowane wydarzenia", color=0x04ff00)
 
-        day = datetime.datetime.now(tz=dt_pl.tzinfo)
+        pl_tzinfo = get_pl_timezone().tzinfo
+        day = datetime.datetime.now(tz=pl_tzinfo)
         
         for key, value in data.items():
             if value['Nazwa']:

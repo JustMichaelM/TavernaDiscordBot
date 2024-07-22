@@ -3,15 +3,9 @@ import asyncio
 import datetime
 import pytz
 import utils.table as table
-from discord import app_commands
 from discord.ext import commands, tasks
-from utils.config import TEST_SERVER, get_test_server_id,get_channel_id
+from utils.config import TEST_SERVER, get_test_server_id,get_channel_id, get_pl_timezone
 from discord.ui import Select, View
-
-
-
-dt_utcnow = datetime.datetime.now(tz=pytz.utc)
-dt_pl = dt_utcnow.astimezone(pytz.timezone("Europe/Warsaw"))
 
 class TableReservationCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -19,9 +13,11 @@ class TableReservationCog(commands.Cog):
         self.task_clear_tables.start()
         self.task_table_reminder.start()
         
-    @tasks.loop(time=datetime.time(hour=23, tzinfo=dt_pl.tzinfo)) #loop uruchamiany codziennie o 23
+    @tasks.loop(time=datetime.time(hour=23, tzinfo = get_pl_timezone())) #loop uruchamiany codziennie o 23
     async def task_clear_tables(self):
-        day = datetime.datetime.now(tz=dt_pl.tzinfo)
+        pl_tzinfo = get_pl_timezone().tzinfo
+
+        day = datetime.datetime.now(tz=pl_tzinfo)
         if day.isoweekday() == 7:
             table.clear_all_tables() #w niedziele o 23 czyścimy stoły.
     
@@ -29,10 +25,11 @@ class TableReservationCog(commands.Cog):
     async def task_clear_tables_before_loop(self):
         await self.bot.wait_until_ready()
 
-    @tasks.loop(time=datetime.time(hour=12, tzinfo=dt_pl.tzinfo))  # Loop uruchamiany codziennie o 12
+    @tasks.loop(time=datetime.time(hour=12, tzinfo=get_pl_timezone()))  # Loop uruchamiany codziennie o 12
     async def task_table_reminder(self):
         guild = self.bot.get_guild(get_test_server_id())
-        day = datetime.datetime.now(tz=dt_pl.tzinfo)
+        pl_tzinfo = get_pl_timezone().tzinfo
+        day = datetime.datetime.now(tz=pl_tzinfo)
         if day.isoweekday() in [1, 3, 5]:  # Poniedziałek (1), Środa (3) i Piątek (5)
             channel = await guild.fetch_channel(get_channel_id("TEST_CHANNEL_ID")) #TO ZAMIENIĆ NA ODPOWIEDNI CHANNEL ID
             embed = embed_tables_info(guild)
@@ -322,7 +319,8 @@ async def tables_chcecks(booking_person: discord.Member, interaction: discord.In
     
 
 def get_next_saturday() -> datetime:
-    today = datetime.datetime.now(tz=dt_pl.tzinfo)
+    pl_tzinfo = get_pl_timezone().tzinfo
+    today = datetime.datetime.now(tz=pl_tzinfo)
 
     if today.isoweekday() == 7:
         next_saturday = today + datetime.timedelta(int(today.isoweekday())-1)

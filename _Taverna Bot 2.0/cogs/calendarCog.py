@@ -1,46 +1,65 @@
-from discord.ext import commands
-from utils.config import TEST_SERVER, get_test_server_id
+from discord.ext import commands, tasks
+from utils.config import TEST_SERVER, get_test_server_id, get_pl_timezone
 import discord.ui
 from discord import Interaction
 import utils.club_calendar as calendar
 import utils.banhammer as banhammer
 import re
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 class CalendarCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+        self.task_clear_calendar.start()
 
     @commands.command()
-    async def test(self, ctx):
+    @commands.is_owner()
+    async def show_buttons(self, ctx):
         await ctx.message.delete()
         view = CalendarView(self.bot)
         await ctx.send(view=view)
     
     @commands.command()
+    @commands.is_owner()
     async def embed_calendar(self, ctx):
+        await ctx.message.delete()
         guild = self.bot.get_guild(get_test_server_id())
         embed = embed_calendar_info(guild)
         await ctx.send(embed = embed)
     
     @commands.command()
+    @commands.is_owner()
     async def clear_calendar(self, ctx):
+        await ctx.message.delete()
         calendar.clear_calendar()
         await edit_msg(self.bot)
     
     @commands.command()
+    @commands.is_owner()
     async def banhammer(self, ctx, user_id):
         banhammer.banhammer_callendar(user_id)
         await ctx.message.delete()
     
     @commands.command()
+    @commands.is_owner()
     async def unhammer(self, ctx, user_id):
         banhammer.unhammer_callendar(user_id)
         await ctx.message.delete()
 
+    @tasks.loop(time=datetime.time(hour=8, tzinfo=get_pl_timezone())) #loop uruchamiany codziennie o 23
+    async def task_clear_calendar(self):
+        pl_tzinfo = get_pl_timezone().tzinfo
+        day = datetime.datetime.now(tz=pl_tzinfo)
+        if day.isoweekday() == 1:
+            calendar.clear_calendar() # w poniedziałek o 8 czyścimy stoły.
     
+    @task_clear_calendar.before_loop
+    async def task_clear_calendar_before_loop(self):
+        await self.bot.wait_until_ready()
+        print("Tak clear_calendar ruszył")
+
 async def setup(bot:commands.Bot) -> None:
     await bot.add_cog(CalendarCog(bot), guild=TEST_SERVER)
 
@@ -207,7 +226,7 @@ class CalendarView(discord.ui.View):
 
 def embed_calendar_info(guild: discord.Guild) -> discord.Embed:
     data = calendar.load_json()
-    embed = discord.Embed(title="Chętni do zagrania na obecny tydzień (Pon -> Piątek)", color=discord.Color.blue())
+    embed = discord.Embed(title="Chętni do zagrania", color=discord.Color.blue())
     text = ""
     gracz = ""
     godzina = ""

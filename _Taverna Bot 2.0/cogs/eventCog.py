@@ -34,6 +34,7 @@ class EventCog(commands.Cog):
    
     @app_commands.command(name="clear_calendar", description="czyści kalendarz do 0")
     async def clear(self, interaction: discord.Interaction):
+        #Sprawdzamy czy użytkownik jest uprawniony do użycia tej komendy
         if await self.bot.is_owner(interaction.user):
             events.clear_calendar()
             
